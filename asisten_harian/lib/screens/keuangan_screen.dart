@@ -9,12 +9,12 @@ class KeuanganScreen extends StatefulWidget {
 }
 
 class _Transaksi {
-  final String judul;
-  final String kategori;
-  final double jumlah;
-  final DateTime tanggal;
-  final bool pemasukan;
-  final int? indeksTabungan;
+  String judul;
+  String kategori;
+  double jumlah;
+  DateTime tanggal;
+  bool pemasukan;
+  int? indeksTabungan;
 
   _Transaksi({
     required this.judul,
@@ -34,26 +34,26 @@ class _TargetTabungan {
   _TargetTabungan({
     required this.nama,
     required this.target,
-    this.terkumpul = 0.0,
+    this.terkumpul = 0,
   });
 }
 
 class _KeuanganScreenState extends State<KeuanganScreen> {
-  static const Color _navy = Color(0xFF102A56);
-  static const Color _biru = Color(0xFF246BFD);
-  static const Color _hijau = Color(0xFF18B786);
-  static const Color _merah = Color(0xFFE85D75);
-  static const Color _latar = Color(0xFFF4F7FC);
-  static const Color _teks = Color(0xFF24334D);
-  static const Color _abu = Color(0xFF7D8BA3);
+  static const Color navy = Color(0xFF102A56);
+  static const Color biru = Color(0xFF246BFD);
+  static const Color hijau = Color(0xFF18B786);
+  static const Color merah = Color(0xFFE85D75);
+  static const Color latar = Color(0xFFF4F7FC);
+  static const Color teks = Color(0xFF24334D);
+  static const Color abu = Color(0xFF7D8BA3);
 
-  final NumberFormat _rupiah = NumberFormat.currency(
+  final NumberFormat rupiah = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
     decimalDigits: 0,
   );
 
-  final List<String> _kategori = [
+  final List<String> kategori = [
     'Makanan',
     'Transportasi',
     'Kuliah',
@@ -65,7 +65,7 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     'Lainnya',
   ];
 
-  final Map<String, double> _anggaran = {
+  final Map<String, double> anggaran = {
     'Makanan': 0,
     'Transportasi': 0,
     'Kuliah': 0,
@@ -77,140 +77,101 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     'Lainnya': 0,
   };
 
-  final List<_Transaksi> _transaksi = [];
-  final List<_TargetTabungan> _tabungan = [];
+  final List<_Transaksi> transaksi = [];
+  final List<_TargetTabungan> tabungan = [];
 
-  double _saldoAwal = 0;
-  int _filterTransaksi = 0;
+  double saldoAwal = 0;
+  int filterTransaksi = 0;
 
-  double get _pemasukanBulanIni {
-    final sekarang = DateTime.now();
-    return _transaksi
-        .where(
-          (t) =>
-              t.pemasukan &&
-              t.tanggal.year == sekarang.year &&
-              t.tanggal.month == sekarang.month,
-        )
-        .fold(0.0, (total, t) => total + t.jumlah);
-  }
+  String uang(num nilai) => rupiah.format(nilai);
 
-  double get _pengeluaranBulanIni {
-    final sekarang = DateTime.now();
-    return _transaksi
-        .where(
-          (t) =>
-              !t.pemasukan &&
-              t.tanggal.year == sekarang.year &&
-              t.tanggal.month == sekarang.month,
-        )
-        .fold(0.0, (total, t) => total + t.jumlah);
-  }
-
-  double get _totalPemasukan {
-    return _transaksi
-        .where((t) => t.pemasukan)
-        .fold(0.0, (total, t) => total + t.jumlah);
-  }
-
-  double get _totalPengeluaran {
-    return _transaksi
-        .where((t) => !t.pemasukan)
-        .fold(0.0, (total, t) => total + t.jumlah);
-  }
-
-  double get _saldoBersih => _saldoAwal + _totalPemasukan - _totalPengeluaran;
-
-  double get _totalAnggaran =>
-      _anggaran.values.fold(0.0, (total, nilai) => total + nilai);
-
-  double get _sisaAnggaranBulanIni => _totalAnggaran - _pengeluaranBulanIni;
-
-  int get _jumlahHariBulanIni {
+  int get jumlahHariBulan {
     final sekarang = DateTime.now();
     return DateTime(sekarang.year, sekarang.month + 1, 0).day;
   }
 
-  double _pengeluaranKategori(String kategori) {
+  double get pemasukanBulan {
     final sekarang = DateTime.now();
-    return _transaksi
-        .where(
-          (t) =>
-              !t.pemasukan &&
-              t.kategori == kategori &&
-              t.tanggal.year == sekarang.year &&
-              t.tanggal.month == sekarang.month,
-        )
+    return transaksi
+        .where((t) =>
+            t.pemasukan &&
+            t.tanggal.year == sekarang.year &&
+            t.tanggal.month == sekarang.month)
         .fold(0.0, (total, t) => total + t.jumlah);
   }
 
-  // Menghitung total pengeluaran kategori pada hari ini.
-  double _pengeluaranHariIni(String kategori) {
+  double get pengeluaranBulan {
     final sekarang = DateTime.now();
-
-    return _transaksi
-        .where(
-          (t) =>
-              !t.pemasukan &&
-              t.kategori == kategori &&
-              t.tanggal.year == sekarang.year &&
-              t.tanggal.month == sekarang.month &&
-              t.tanggal.day == sekarang.day,
-        )
+    return transaksi
+        .where((t) =>
+            !t.pemasukan &&
+            t.tanggal.year == sekarang.year &&
+            t.tanggal.month == sekarang.month)
         .fold(0.0, (total, t) => total + t.jumlah);
   }
 
-  // Batas harian dikurangi pengeluaran hari ini.
-  double _anggaranHarian(String kategori) {
-    final batas = (_anggaran[kategori] ?? 0) / _jumlahHariBulanIni;
-    final sisa = batas - _pengeluaranHariIni(kategori);
-    return sisa > 0 ? sisa : 0.0;
+  double get totalPemasukan =>
+      transaksi.where((t) => t.pemasukan).fold(0.0, (s, t) => s + t.jumlah);
+
+  double get totalPengeluaran =>
+      transaksi.where((t) => !t.pemasukan).fold(0.0, (s, t) => s + t.jumlah);
+
+  double get saldo => saldoAwal + totalPemasukan - totalPengeluaran;
+
+  double get totalAnggaran =>
+      anggaran.values.fold(0.0, (total, nilai) => total + nilai);
+
+  double pengeluaranKategori(String nama) {
+    final sekarang = DateTime.now();
+    return transaksi
+        .where((t) =>
+            !t.pemasukan &&
+            t.kategori == nama &&
+            t.tanggal.year == sekarang.year &&
+            t.tanggal.month == sekarang.month)
+        .fold(0.0, (s, t) => s + t.jumlah);
   }
 
-  // Menghitung pengeluaran kategori selama tujuh hari terakhir,
-  // termasuk hari ini.
-  double _pengeluaranMingguIni(String kategori) {
+  double pengeluaranHariIni(String nama) {
+    final sekarang = DateTime.now();
+    return transaksi
+        .where((t) =>
+            !t.pemasukan &&
+            t.kategori == nama &&
+            t.tanggal.year == sekarang.year &&
+            t.tanggal.month == sekarang.month &&
+            t.tanggal.day == sekarang.day)
+        .fold(0.0, (s, t) => s + t.jumlah);
+  }
+
+  double anggaranHarian(String nama) {
+    final batas = (anggaran[nama] ?? 0) / jumlahHariBulan;
+    return (batas - pengeluaranHariIni(nama)).clamp(0.0, double.infinity);
+  }
+
+  double pengeluaranMingguan(String nama) {
     final sekarang = DateTime.now();
     final hariIni = DateTime(sekarang.year, sekarang.month, sekarang.day);
     final mulai = hariIni.subtract(const Duration(days: 6));
     final besok = hariIni.add(const Duration(days: 1));
 
-    return _transaksi
-        .where(
-          (t) =>
-              !t.pemasukan &&
-              t.kategori == kategori &&
-              !t.tanggal.isBefore(mulai) &&
-              t.tanggal.isBefore(besok),
-        )
-        .fold(0.0, (total, t) => total + t.jumlah);
+    return transaksi
+        .where((t) =>
+            !t.pemasukan &&
+            t.kategori == nama &&
+            !t.tanggal.isBefore(mulai) &&
+            t.tanggal.isBefore(besok))
+        .fold(0.0, (s, t) => s + t.jumlah);
   }
 
-  // Menghitung alokasi anggaran untuk tujuh hari.
-  double _anggaranMingguan(String kategori) {
-    final jumlah = _anggaran[kategori] ?? 0;
-    return jumlah / _jumlahHariBulanIni * 7;
+  double sisaMingguan(String nama) {
+    final batas = (anggaran[nama] ?? 0) / jumlahHariBulan * 7;
+    return (batas - pengeluaranMingguan(nama))
+        .clamp(0.0, double.infinity);
   }
 
-  // Sisa batas mingguan setelah pengeluaran tujuh hari terakhir.
-  double _sisaAnggaranMingguan(String kategori) {
-    final batas = _anggaranMingguan(kategori);
-    final sisa = batas - _pengeluaranMingguIni(kategori);
-    return sisa > 0 ? sisa : 0.0;
-  }
-
-  double _sisaKategori(String kategori) {
-    return (_anggaran[kategori] ?? 0) - _pengeluaranKategori(kategori);
-  }
-
-  String _formatAngka(num nilai) => _rupiah.format(nilai);
-
-  String _formatTanggal(DateTime tanggal) {
-    return DateFormat('dd/MM/yyyy HH:mm').format(tanggal);
-  }
-
-  IconData _ikonKategori(String kategori) {
-    switch (kategori) {
+  IconData ikonKategori(String nama) {
+    switch (nama) {
       case 'Makanan':
         return Icons.restaurant_rounded;
       case 'Transportasi':
@@ -232,8 +193,8 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     }
   }
 
-  Color _warnaKategori(String kategori) {
-    switch (kategori) {
+  Color warnaKategori(String nama) {
+    switch (nama) {
       case 'Makanan':
         return const Color(0xFFFFA940);
       case 'Transportasi':
@@ -249,13 +210,19 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
       case 'Kesehatan':
         return const Color(0xFF35B87A);
       case 'Tabungan':
-        return const Color(0xFF18B786);
+        return hijau;
       default:
-        return const Color(0xFF8293AB);
+        return abu;
     }
   }
 
-  void _tambahTransaksi({
+  String tanggal(DateTime t) {
+    String dua(int n) => n.toString().padLeft(2, '0');
+    return '${dua(t.day)}/${dua(t.month)}/${t.year} '
+        '${dua(t.hour)}:${dua(t.minute)}';
+  }
+
+  void tambahTransaksi({
     required String judul,
     required String kategori,
     required double jumlah,
@@ -263,9 +230,8 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     int? indeksTabungan,
   }) {
     if (jumlah <= 0) return;
-
     setState(() {
-      _transaksi.insert(
+      transaksi.insert(
         0,
         _Transaksi(
           judul: judul,
@@ -279,34 +245,17 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     });
   }
 
-  void _hapusTransaksi(int indeks) {
-    final transaksi = _transaksi[indeks];
-
-    setState(() {
-      if (transaksi.indeksTabungan != null &&
-          transaksi.indeksTabungan! >= 0 &&
-          transaksi.indeksTabungan! < _tabungan.length) {
-        _tabungan[transaksi.indeksTabungan!].terkumpul -= transaksi.jumlah;
-        if (_tabungan[transaksi.indeksTabungan!].terkumpul < 0) {
-          _tabungan[transaksi.indeksTabungan!].terkumpul = 0;
-        }
-      }
-
-      _transaksi.removeAt(indeks);
-    });
-  }
-
-  Future<void> _aturSaldoAwalDialog() async {
-    final controller = TextEditingController(
-      text: _saldoAwal == 0 ? '' : _saldoAwal.toStringAsFixed(0),
+  Future<void> aturSaldo() async {
+    final c = TextEditingController(
+      text: saldoAwal == 0 ? '' : saldoAwal.toStringAsFixed(0),
     );
 
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Atur saldo awal'),
         content: TextField(
-          controller: controller,
+          controller: c,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             labelText: 'Saldo awal',
@@ -316,34 +265,34 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () {
               final nilai =
-                  double.tryParse(controller.text.replaceAll('.', '')) ?? 0;
-              setState(() => _saldoAwal = nilai);
-              Navigator.pop(context);
+                  double.tryParse(c.text.replaceAll('.', '')) ?? 0;
+              setState(() => saldoAwal = nilai);
+              Navigator.pop(ctx);
             },
             child: const Text('Simpan'),
           ),
         ],
       ),
     );
-    controller.dispose();
+    c.dispose();
   }
 
-  Future<void> _tambahTransaksiDialog() async {
-    final judulController = TextEditingController();
-    final jumlahController = TextEditingController();
+  Future<void> tambahTransaksiDialog() async {
+    final namaC = TextEditingController();
+    final jumlahC = TextEditingController();
     bool pemasukan = false;
-    String kategori = _kategori.first;
+    String pilihanKategori = kategori.first;
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
           title: const Text('Tambah transaksi'),
           content: SingleChildScrollView(
             child: Column(
@@ -363,13 +312,12 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                     ),
                   ],
                   selected: {pemasukan},
-                  onSelectionChanged: (pilihan) {
-                    setDialogState(() => pemasukan = pilihan.first);
-                  },
+                  onSelectionChanged: (v) =>
+                      setDialog(() => pemasukan = v.first),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 TextField(
-                  controller: judulController,
+                  controller: namaC,
                   decoration: const InputDecoration(
                     labelText: 'Nama transaksi',
                     hintText: 'Contoh: Makan siang',
@@ -378,7 +326,7 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: jumlahController,
+                  controller: jumlahC,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Jumlah uang',
@@ -388,21 +336,19 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: kategori,
+                  initialValue: pilihanKategori,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Kategori',
                     border: OutlineInputBorder(),
                   ),
-                  items: _kategori
-                      .map(
-                        (item) =>
-                            DropdownMenuItem(value: item, child: Text(item)),
-                      )
+                  items: kategori
+                      .map((k) =>
+                          DropdownMenuItem(value: k, child: Text(k)))
                       .toList(),
-                  onChanged: (nilai) {
-                    if (nilai != null) {
-                      setDialogState(() => kategori = nilai);
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialog(() => pilihanKategori = v);
                     }
                   },
                 ),
@@ -411,36 +357,31 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('Batal'),
             ),
             FilledButton(
               onPressed: () {
-                final judul = judulController.text.trim();
+                final nama = namaC.text.trim();
                 final jumlah =
-                    double.tryParse(
-                      jumlahController.text.replaceAll('.', ''),
-                    ) ??
-                    0;
+                    double.tryParse(jumlahC.text.replaceAll('.', '')) ?? 0;
 
-                if (judul.isEmpty || jumlah <= 0) {
+                if (nama.isEmpty || jumlah <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Isi nama dan jumlah transaksi dengan benar.',
-                      ),
+                      content: Text('Isi nama dan jumlah dengan benar.'),
                     ),
                   );
                   return;
                 }
 
-                _tambahTransaksi(
-                  judul: judul,
-                  kategori: kategori,
+                tambahTransaksi(
+                  judul: nama,
+                  kategori: pilihanKategori,
                   jumlah: jumlah,
                   pemasukan: pemasukan,
                 );
-                Navigator.pop(dialogContext);
+                Navigator.pop(ctx);
               },
               child: const Text('Simpan'),
             ),
@@ -449,23 +390,23 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
       ),
     );
 
-    judulController.dispose();
-    jumlahController.dispose();
+    namaC.dispose();
+    jumlahC.dispose();
   }
 
-  Future<void> _aturAnggaranDialog(String kategori) async {
-    final controller = TextEditingController(
-      text: (_anggaran[kategori] ?? 0) == 0
+  Future<void> aturAnggaran(String nama) async {
+    final c = TextEditingController(
+      text: (anggaran[nama] ?? 0) == 0
           ? ''
-          : (_anggaran[kategori] ?? 0).toStringAsFixed(0),
+          : anggaran[nama]!.toStringAsFixed(0),
     );
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Anggaran $kategori'),
+      builder: (ctx) => AlertDialog(
+        title: Text('Anggaran $nama'),
         content: TextField(
-          controller: controller,
+          controller: c,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             labelText: 'Anggaran per bulan',
@@ -475,52 +416,50 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () {
-              final nilai =
-                  double.tryParse(controller.text.replaceAll('.', '')) ?? 0;
-              setState(() => _anggaran[kategori] = nilai < 0 ? 0 : nilai);
-              Navigator.pop(dialogContext);
+              final n = double.tryParse(c.text.replaceAll('.', '')) ?? 0;
+              setState(() => anggaran[nama] = n < 0 ? 0 : n);
+              Navigator.pop(ctx);
             },
             child: const Text('Simpan'),
           ),
         ],
       ),
     );
-
-    controller.dispose();
+    c.dispose();
   }
 
-  Future<void> _aturSemuaAnggaranDialog() async {
+  Future<void> aturSemuaAnggaran() async {
     final controllers = <String, TextEditingController>{
-      for (final kategori in _kategori)
-        kategori: TextEditingController(
-          text: (_anggaran[kategori] ?? 0) == 0
+      for (final k in kategori)
+        k: TextEditingController(
+          text: (anggaran[k] ?? 0) == 0
               ? ''
-              : (_anggaran[kategori] ?? 0).toStringAsFixed(0),
+              : anggaran[k]!.toStringAsFixed(0),
         ),
     };
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Atur semua anggaran'),
         content: SizedBox(
           width: 420,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: _kategori.map((kategori) {
+              children: kategori.map((k) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: TextField(
-                    controller: controllers[kategori],
+                    controller: controllers[k],
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
-                      labelText: kategori,
+                      labelText: k,
                       prefixText: 'Rp ',
                       border: const OutlineInputBorder(),
                     ),
@@ -532,22 +471,21 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () {
               setState(() {
-                for (final kategori in _kategori) {
-                  final nilai =
-                      double.tryParse(
-                        controllers[kategori]!.text.replaceAll('.', ''),
+                for (final k in kategori) {
+                  final n = double.tryParse(
+                        controllers[k]!.text.replaceAll('.', ''),
                       ) ??
                       0;
-                  _anggaran[kategori] = nilai < 0 ? 0 : nilai;
+                  anggaran[k] = n < 0 ? 0 : n;
                 }
               });
-              Navigator.pop(dialogContext);
+              Navigator.pop(ctx);
             },
             child: const Text('Simpan semua'),
           ),
@@ -555,24 +493,24 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
       ),
     );
 
-    for (final controller in controllers.values) {
-      controller.dispose();
+    for (final c in controllers.values) {
+      c.dispose();
     }
   }
 
-  Future<void> _tambahTargetDialog() async {
-    final namaController = TextEditingController();
-    final targetController = TextEditingController();
+  Future<void> tambahTarget() async {
+    final namaC = TextEditingController();
+    final targetC = TextEditingController();
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Target tabungan baru'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: namaController,
+              controller: namaC,
               decoration: const InputDecoration(
                 labelText: 'Nama target',
                 hintText: 'Contoh: Beli laptop',
@@ -581,7 +519,7 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: targetController,
+              controller: targetC,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Jumlah target',
@@ -593,15 +531,14 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () {
-              final nama = namaController.text.trim();
+              final nama = namaC.text.trim();
               final target =
-                  double.tryParse(targetController.text.replaceAll('.', '')) ??
-                  0;
+                  double.tryParse(targetC.text.replaceAll('.', '')) ?? 0;
 
               if (nama.isEmpty || target <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -613,9 +550,11 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
               }
 
               setState(() {
-                _tabungan.add(_TargetTabungan(nama: nama, target: target));
+                tabungan.add(
+                  _TargetTabungan(nama: nama, target: target),
+                );
               });
-              Navigator.pop(dialogContext);
+              Navigator.pop(ctx);
             },
             child: const Text('Buat target'),
           ),
@@ -623,20 +562,19 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
       ),
     );
 
-    namaController.dispose();
-    targetController.dispose();
+    namaC.dispose();
+    targetC.dispose();
   }
 
-  Future<void> _nabungDialog(int indeks) async {
-    final controller = TextEditingController();
-    final target = _tabungan[indeks];
+  Future<void> nabung(int indeks) async {
+    final c = TextEditingController();
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Nabung: ${target.nama}'),
+      builder: (ctx) => AlertDialog(
+        title: Text('Nabung: ${tabungan[indeks].nama}'),
         content: TextField(
-          controller: controller,
+          controller: c,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             labelText: 'Jumlah tabungan',
@@ -646,49 +584,80 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () {
-              final jumlah =
-                  double.tryParse(controller.text.replaceAll('.', '')) ?? 0;
-
-              if (jumlah <= 0) {
+              final n = double.tryParse(c.text.replaceAll('.', '')) ?? 0;
+              if (n <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Masukkan jumlah tabungan yang benar.'),
-                  ),
+                  const SnackBar(content: Text('Masukkan jumlah yang benar.')),
                 );
                 return;
               }
 
               setState(() {
-                target.terkumpul += jumlah;
-                _transaksi.insert(
+                tabungan[indeks].terkumpul += n;
+                transaksi.insert(
                   0,
                   _Transaksi(
-                    judul: 'Tabungan ${target.nama}',
+                    judul: 'Tabungan ${tabungan[indeks].nama}',
                     kategori: 'Tabungan',
-                    jumlah: jumlah,
+                    jumlah: n,
                     tanggal: DateTime.now(),
                     pemasukan: false,
                     indeksTabungan: indeks,
                   ),
                 );
               });
-              Navigator.pop(dialogContext);
+              Navigator.pop(ctx);
             },
             child: const Text('Simpan tabungan'),
           ),
         ],
       ),
     );
-
-    controller.dispose();
+    c.dispose();
   }
 
-  Widget _judulBagian(String judul, {String? keterangan, Widget? aksi}) {
+  Future<void> hapusTransaksi(int indeks) async {
+    final t = transaksi[indeks];
+
+    final konfirmasi = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus transaksi?'),
+        content: Text('Transaksi "${t.judul}" akan dihapus.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: merah),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (konfirmasi == true && mounted) {
+      setState(() {
+        if (t.indeksTabungan != null &&
+            t.indeksTabungan! < tabungan.length) {
+          tabungan[t.indeksTabungan!].terkumpul =
+              (tabungan[t.indeksTabungan!].terkumpul - t.jumlah)
+                  .clamp(0.0, double.infinity);
+        }
+        transaksi.removeAt(indeks);
+      });
+    }
+  }
+
+  Widget judulBagian(String judul, String keterangan,
+      {Widget? aksi}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -700,18 +669,16 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                 Text(
                   judul,
                   style: const TextStyle(
+                    color: teks,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: _teks,
                   ),
                 ),
-                if (keterangan != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    keterangan,
-                    style: const TextStyle(fontSize: 12, color: _abu),
-                  ),
-                ],
+                const SizedBox(height: 4),
+                Text(
+                  keterangan,
+                  style: const TextStyle(color: abu, fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -721,9 +688,9 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     );
   }
 
-  Widget _kartuUtama(double lebar) {
-    final rasio = _totalAnggaran > 0
-        ? (_pengeluaranBulanIni / _totalAnggaran).clamp(0.0, 1.0)
+  Widget kartuSaldo(double lebar) {
+    final rasio = totalAnggaran > 0
+        ? (pengeluaranBulan / totalAnggaran).clamp(0.0, 1.0)
         : 0.0;
 
     return Container(
@@ -735,12 +702,12 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: _biru.withValues(alpha: 0.18),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: biru.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 9),
           ),
         ],
       ),
@@ -749,84 +716,67 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: Colors.white,
-                  size: 23,
-                ),
+              const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Colors.white,
+                size: 25,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               const Expanded(
                 child: Text(
                   'Saldo Keuangan',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               IconButton(
                 tooltip: 'Atur saldo awal',
-                onPressed: _aturSaldoAwalDialog,
-                icon: const Icon(
-                  Icons.edit_rounded,
-                  color: Colors.white,
-                  size: 19,
-                ),
+                onPressed: aturSaldo,
+                icon: const Icon(Icons.edit_rounded, color: Colors.white),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Text(
-            _formatAngka(_saldoBersih),
+            uang(saldo),
             style: TextStyle(
-              color: _saldoBersih < 0 ? const Color(0xFFFFB7C1) : Colors.white,
+              color: saldo < 0 ? const Color(0xFFFFB7C1) : Colors.white,
               fontSize: lebar < 360 ? 25 : 31,
               fontWeight: FontWeight.w900,
-              letterSpacing: -0.7,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 7),
           Text(
-            'Saldo awal + seluruh pemasukan − seluruh pengeluaran',
+            'Saldo awal + pemasukan − pengeluaran',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.75),
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           Row(
             children: [
               const Expanded(
                 child: Text(
                   'Penggunaan anggaran bulan ini',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
               Text(
                 '${(rasio * 100).round()}%',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 9),
           ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
             child: LinearProgressIndicator(
               value: rasio,
               minHeight: 8,
@@ -836,414 +786,239 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _totalAnggaran == 0
-                      ? 'Anggaran belum diatur'
-                      : 'Sisa anggaran: ${_formatAngka(_sisaAnggaranBulanIni)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (_totalAnggaran > 0)
-                Text(
-                  'dari ${_formatAngka(_totalAnggaran)}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 10,
-                  ),
-                ),
-            ],
+          const SizedBox(height: 10),
+          Text(
+            totalAnggaran == 0
+                ? 'Anggaran belum diatur'
+                : 'Sisa anggaran: ${uang(totalAnggaran - pengeluaranBulan)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _kartuRingkasan({
-    required String judul,
-    required double jumlah,
-    required IconData ikon,
-    required Color warna,
-    required String keterangan,
-  }) {
+  Widget kartuRingkasan(
+    String judul,
+    double nilai,
+    IconData ikon,
+    Color warna,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(19),
         border: Border.all(color: const Color(0xFFE8EDF5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: warna.withValues(alpha: 0.11),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(ikon, color: warna, size: 19),
-              ),
-              const Spacer(),
-              Icon(
-                Icons.trending_up_rounded,
-                color: warna.withValues(alpha: 0.8),
-                size: 18,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            judul,
-            style: const TextStyle(
-              fontSize: 12,
-              color: _abu,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Icon(ikon, color: warna, size: 24),
+          const SizedBox(height: 12),
+          Text(judul, style: const TextStyle(color: abu, fontSize: 12)),
           const SizedBox(height: 5),
           Text(
-            _formatAngka(jumlah),
+            uang(nilai),
             style: const TextStyle(
-              color: _teks,
+              color: teks,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
-              fontSize: 17,
             ),
           ),
-          const SizedBox(height: 5),
-          Text(keterangan, style: const TextStyle(fontSize: 10, color: _abu)),
         ],
       ),
     );
   }
 
-  Widget _bagianAnggaran() {
-    final total = _totalAnggaran;
-    final melebihiSaldo = total > _pemasukanBulanIni && _pemasukanBulanIni > 0;
-
+  Widget bagianAnggaran() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _judulBagian(
+        judulBagian(
           'Anggaran Saya',
-          keterangan: 'Atur batas pengeluaran untuk setiap kategori.',
+          'Semua kategori dalam satu tabel yang bisa digeser.',
           aksi: TextButton.icon(
-            onPressed: _aturSemuaAnggaranDialog,
-            icon: const Icon(Icons.tune_rounded, size: 17),
+            onPressed: aturSemuaAnggaran,
+            icon: const Icon(Icons.tune_rounded, size: 18),
             label: const Text('Atur semua'),
           ),
         ),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(17),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFE8EDF5)),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Total anggaran bulanan',
-                      style: TextStyle(color: _abu, fontSize: 12),
-                    ),
-                  ),
-                  Text(
-                    _formatAngka(total),
-                    style: const TextStyle(
-                      color: _navy,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Total pengeluaran bulan ini',
-                      style: TextStyle(color: _abu, fontSize: 12),
-                    ),
-                  ),
-                  Text(
-                    _formatAngka(_pengeluaranBulanIni),
-                    style: const TextStyle(
-                      color: _merah,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              if (melebihiSaldo) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF2E8),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: Color(0xFFD97820),
-                        size: 19,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Total anggaran lebih besar daripada pemasukan bulan ini. Pertimbangkan untuk menyesuaikannya.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF98551C),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Total anggaran',
+                            style: TextStyle(color: abu, fontSize: 12),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                        Text(
+                          uang(totalAnggaran),
+                          style: const TextStyle(
+                            color: navy,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Pengeluaran bulan ini',
+                            style: TextStyle(color: abu, fontSize: 12),
+                          ),
+                        ),
+                        Text(
+                          uang(pengeluaranBulan),
+                          style: const TextStyle(
+                            color: merah,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingRowColor:
+                      WidgetStateProperty.all(const Color(0xFFF4F7FC)),
+                  columnSpacing: 18,
+                  horizontalMargin: 10,
+                  dataRowMinHeight: 52,
+                  dataRowMaxHeight: 62,
+                  columns: const [
+                    DataColumn(label: Text('Kategori')),
+                    DataColumn(label: Text('Anggaran')),
+                    DataColumn(label: Text('Terpakai')),
+                    DataColumn(label: Text('Sisa/hari')),
+                    DataColumn(label: Text('Sisa/minggu')),
+                    DataColumn(label: Text('Atur')),
+                  ],
+                  rows: kategori.map((k) {
+                    final batas = anggaran[k] ?? 0;
+                    final pakai = pengeluaranKategori(k);
+                    final lewat = batas > 0 && pakai > batas;
+
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                ikonKategori(k),
+                                color: warnaKategori(k),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 7),
+                              Text(k),
+                            ],
+                          ),
+                        ),
+                        DataCell(Text(uang(batas))),
+                        DataCell(
+                          Text(
+                            uang(pakai),
+                            style: TextStyle(
+                              color: lewat ? merah : teks,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            uang(anggaranHarian(k)),
+                            style: const TextStyle(color: biru),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            uang(sisaMingguan(k)),
+                            style: const TextStyle(color: hijau),
+                          ),
+                        ),
+                        DataCell(
+                          IconButton(
+                            tooltip: 'Atur $k',
+                            onPressed: () => aturAnggaran(k),
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: biru,
+                              size: 19,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text(
+                  'Geser tabel ke samping untuk melihat seluruh kolom.',
+                  style: TextStyle(color: abu, fontSize: 10),
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        ..._kategori.map((kategori) {
-          final anggaran = _anggaran[kategori] ?? 0;
-          final terpakai = _pengeluaranKategori(kategori);
-          final sisa = _sisaKategori(kategori);
-          final persentase = anggaran > 0
-              ? (terpakai / anggaran).clamp(0.0, 1.0)
-              : 0.0;
-          final warna = _warnaKategori(kategori);
-          final melebihi = anggaran > 0 && terpakai > anggaran;
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(19),
-              border: Border.all(color: const Color(0xFFE8EDF5)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 43,
-                      height: 43,
-                      decoration: BoxDecoration(
-                        color: warna.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        _ikonKategori(kategori),
-                        color: warna,
-                        size: 21,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            kategori,
-                            style: const TextStyle(
-                              color: _teks,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Terpakai ${_formatAngka(terpakai)}',
-                            style: const TextStyle(color: _abu, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Atur anggaran $kategori',
-                      onPressed: () => _aturAnggaranDialog(kategori),
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        color: _biru,
-                        size: 19,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 13),
-                Row(
-                  children: [
-                    const Text(
-                      'Anggaran',
-                      style: TextStyle(color: _abu, fontSize: 11),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _formatAngka(anggaran),
-                      style: const TextStyle(
-                        color: _teks,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: persentase,
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFFEEF1F7),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      melebihi ? _merah : warna,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _infoAnggaranMini(
-                        'Sisa harian',
-                        _formatAngka(_anggaranHarian(kategori)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _infoAnggaranMini(
-                        'Sisa mingguan',
-                        _formatAngka(_sisaAnggaranMingguan(kategori)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _infoAnggaranMini(
-                        melebihi ? 'Melebihi' : 'Sisa anggaran',
-                        _formatAngka(sisa.abs()),
-                        warna: melebihi ? _merah : _hijau,
-                      ),
-                    ),
-                  ],
-                ),
-                if (anggaran == 0) ...[
-                  const SizedBox(height: 8),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Belum ada anggaran. Tekan ikon edit untuk mengaturnya.',
-                      style: TextStyle(color: _abu, fontSize: 10),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-        }),
       ],
     );
   }
 
-  Widget _infoAnggaranMini(String judul, String nilai, {Color warna = _teks}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: _latar,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            judul,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 9, color: _abu),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            nilai,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: warna,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bagianTabungan() {
-    final totalTarget = _tabungan.fold(
-      0.0,
-      (total, item) => total + item.target,
-    );
-    final totalTerkumpul = _tabungan.fold(
-      0.0,
-      (total, item) => total + item.terkumpul,
-    );
+  Widget bagianTabungan() {
+    final totalTarget =
+        tabungan.fold(0.0, (s, t) => s + t.target);
+    final terkumpul =
+        tabungan.fold(0.0, (s, t) => s + t.terkumpul);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _judulBagian(
+        judulBagian(
           'Tabungan',
-          keterangan: 'Pantau perkembangan target keuanganmu.',
+          'Pantau perkembangan target keuangan.',
           aksi: IconButton(
-            tooltip: 'Tambah target tabungan',
-            onPressed: _tambahTargetDialog,
-            icon: const Icon(Icons.add_circle_rounded, color: _hijau, size: 29),
+            onPressed: tambahTarget,
+            icon: const Icon(Icons.add_circle_rounded, color: hijau, size: 29),
           ),
         ),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE5FBF2), Color(0xFFF3FFFA)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFD1F2E4)),
+            color: const Color(0xFFE5FBF2),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _hijau.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.savings_rounded,
-                  color: _hijau,
-                  size: 25,
-                ),
-              ),
+              const Icon(Icons.savings_rounded, color: hijau, size: 35),
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
@@ -1251,14 +1026,14 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                   children: [
                     const Text(
                       'Total tabungan terkumpul',
-                      style: TextStyle(color: _abu, fontSize: 11),
+                      style: TextStyle(color: abu, fontSize: 11),
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      _formatAngka(totalTerkumpul),
+                      uang(terkumpul),
                       style: const TextStyle(
-                        color: _navy,
-                        fontSize: 19,
+                        color: navy,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -1267,10 +1042,9 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
               ),
               if (totalTarget > 0)
                 Text(
-                  '${(totalTerkumpul / totalTarget * 100).clamp(0, 100).round()}%',
+                  '${(terkumpul / totalTarget * 100).clamp(0, 100).round()}%',
                   style: const TextStyle(
-                    color: _hijau,
-                    fontSize: 17,
+                    color: hijau,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1278,43 +1052,23 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (_tabungan.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE8EDF5)),
-            ),
-            child: const Column(
-              children: [
-                Icon(Icons.savings_outlined, color: _hijau, size: 38),
-                SizedBox(height: 10),
-                Text(
-                  'Belum ada target tabungan',
-                  style: TextStyle(color: _teks, fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  'Tekan tombol tambah untuk membuat target pertamamu.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _abu, fontSize: 12),
-                ),
-              ],
-            ),
+        if (tabungan.isEmpty)
+          const _KartuKosong(
+            ikon: Icons.savings_outlined,
+            judul: 'Belum ada target tabungan',
+            keterangan: 'Tekan tombol tambah untuk membuat target.',
           )
         else
-          ...List.generate(_tabungan.length, (indeks) {
-            final item = _tabungan[indeks];
-            final progress = (item.terkumpul / item.target).clamp(0.0, 1.0);
+          ...List.generate(tabungan.length, (i) {
+            final t = tabungan[i];
+            final progress = (t.terkumpul / t.target).clamp(0.0, 1.0);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(19),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFE8EDF5)),
               ),
               child: Column(
@@ -1324,18 +1078,17 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          item.nama,
+                          t.nama,
                           style: const TextStyle(
-                            color: _teks,
+                            color: teks,
                             fontWeight: FontWeight.w800,
-                            fontSize: 14,
                           ),
                         ),
                       ),
                       Text(
                         '${(progress * 100).round()}%',
                         style: const TextStyle(
-                          color: _hijau,
+                          color: hijau,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1348,7 +1101,8 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                       value: progress,
                       minHeight: 8,
                       backgroundColor: const Color(0xFFE7F5EE),
-                      valueColor: const AlwaysStoppedAnimation<Color>(_hijau),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(hijau),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -1356,22 +1110,14 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          '${_formatAngka(item.terkumpul)} dari ${_formatAngka(item.target)}',
-                          style: const TextStyle(color: _abu, fontSize: 11),
+                          '${uang(t.terkumpul)} dari ${uang(t.target)}',
+                          style: const TextStyle(color: abu, fontSize: 11),
                         ),
                       ),
                       FilledButton.tonalIcon(
-                        onPressed: () => _nabungDialog(indeks),
+                        onPressed: () => nabung(i),
                         icon: const Icon(Icons.add_rounded, size: 17),
                         label: const Text('Nabung'),
-                        style: FilledButton.styleFrom(
-                          foregroundColor: _hijau,
-                          backgroundColor: const Color(0xFFE5FBF2),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 9,
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -1383,83 +1129,74 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     );
   }
 
-  Widget _bagianAnalisis() {
-    final pengeluaran = _pengeluaranBulanIni;
-    final pemasukan = _pemasukanBulanIni;
-    final sisaPemasukan = pemasukan - pengeluaran;
-    final kategoriTerbesar = _kategori.isEmpty
-        ? null
-        : _kategori.reduce(
-            (a, b) =>
-                _pengeluaranKategori(a) >= _pengeluaranKategori(b) ? a : b,
-          );
-    final nilaiTerbesar = kategoriTerbesar == null
-        ? 0.0
-        : _pengeluaranKategori(kategoriTerbesar);
-    final persentasePengeluaran = pemasukan > 0
-        ? (pengeluaran / pemasukan).clamp(0.0, 1.0)
+  Widget bagianAnalisis() {
+    final selisih = pemasukanBulan - pengeluaranBulan;
+    final rasio = pemasukanBulan > 0
+        ? (pengeluaranBulan / pemasukanBulan).clamp(0.0, 1.0)
         : 0.0;
+
+    String terbesar = kategori.first;
+    for (final k in kategori) {
+      if (pengeluaranKategori(k) > pengeluaranKategori(terbesar)) {
+        terbesar = k;
+      }
+    }
+
+    final nilaiTerbesar = pengeluaranKategori(terbesar);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _judulBagian(
+        judulBagian(
           'Analisis Keuangan',
-          keterangan: 'Ringkasan kondisi keuangan bulan ini.',
+          'Ringkasan kondisi keuangan bulan ini.',
         ),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE8EDF5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _biru.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: const Icon(Icons.analytics_rounded, color: _biru),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Arus kas bulan ini',
-                      style: TextStyle(
-                        color: _teks,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
+              const Text(
+                'Arus kas bulan ini',
+                style: TextStyle(
+                  color: teks,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              const SizedBox(height: 22),
-              _barisAnalisis('Pemasukan', _formatAngka(pemasukan), _hijau),
+              const SizedBox(height: 20),
+              _BarisAnalisis(
+                judul: 'Pemasukan',
+                nilai: uang(pemasukanBulan),
+                warna: hijau,
+              ),
               const SizedBox(height: 14),
-              _barisAnalisis('Pengeluaran', _formatAngka(pengeluaran), _merah),
+              _BarisAnalisis(
+                judul: 'Pengeluaran',
+                nilai: uang(pengeluaranBulan),
+                warna: merah,
+              ),
               const SizedBox(height: 14),
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
-                  value: persentasePengeluaran,
+                  value: rasio,
                   minHeight: 8,
                   backgroundColor: const Color(0xFFEAF0FA),
-                  valueColor: const AlwaysStoppedAnimation<Color>(_merah),
+                  valueColor: const AlwaysStoppedAnimation<Color>(merah),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                pemasukan > 0
-                    ? '${(persentasePengeluaran * 100).round()}% pemasukan bulan ini telah digunakan.'
-                    : 'Tambahkan transaksi pemasukan untuk melihat persentase penggunaan uang.',
-                style: const TextStyle(color: _abu, fontSize: 11),
+                pemasukanBulan > 0
+                    ? '${(rasio * 100).round()}% pemasukan telah digunakan.'
+                    : 'Tambahkan pemasukan untuk melihat analisis persentase.',
+                style: const TextStyle(color: abu, fontSize: 11),
               ),
               const Divider(height: 28),
               Row(
@@ -1467,14 +1204,13 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
                   const Expanded(
                     child: Text(
                       'Selisih pemasukan dan pengeluaran',
-                      style: TextStyle(color: _abu, fontSize: 12),
+                      style: TextStyle(color: abu, fontSize: 11),
                     ),
                   ),
                   Text(
-                    _formatAngka(sisaPemasukan),
+                    uang(selisih),
                     style: TextStyle(
-                      color: sisaPemasukan < 0 ? _merah : _hijau,
-                      fontSize: 15,
+                      color: selisih < 0 ? merah : hijau,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1485,11 +1221,10 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(17),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFFFFF8EB),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFFFE9C1)),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1497,37 +1232,22 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
               const Icon(
                 Icons.lightbulb_rounded,
                 color: Color(0xFFE5A12A),
-                size: 23,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Catatan keuangan',
-                      style: TextStyle(
-                        color: _teks,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      pemasukan == 0 && pengeluaran == 0
-                          ? 'Mulai catat pemasukan dan pengeluaran agar analisis keuanganmu lebih berguna.'
-                          : sisaPemasukan < 0
-                          ? 'Pengeluaran bulan ini lebih besar daripada pemasukan. Periksa kembali transaksi dan anggaranmu.'
-                          : kategoriTerbesar != null && nilaiTerbesar > 0
-                          ? 'Pengeluaran terbesar bulan ini ada pada kategori $kategoriTerbesar, sebesar ${_formatAngka(nilaiTerbesar)}. Periksa apakah pengeluaran tersebut masih sesuai rencana.'
-                          : 'Pertahankan kebiasaan mencatat transaksi agar pengelolaan keuangan tetap terarah.',
-                      style: const TextStyle(
-                        color: Color(0xFF8A6B37),
-                        fontSize: 12,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  pemasukanBulan == 0 && pengeluaranBulan == 0
+                      ? 'Mulai catat pemasukan dan pengeluaran untuk mendapatkan analisis.'
+                      : selisih < 0
+                          ? 'Pengeluaran lebih besar daripada pemasukan bulan ini. Periksa kembali anggaranmu.'
+                          : nilaiTerbesar > 0
+                              ? 'Pengeluaran terbesar bulan ini ada pada kategori $terbesar, sebesar ${uang(nilaiTerbesar)}.'
+                              : 'Pertahankan kebiasaan mencatat transaksi.',
+                  style: const TextStyle(
+                    color: Color(0xFF8A6B37),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ],
@@ -1537,167 +1257,121 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     );
   }
 
-  Widget _barisAnalisis(String judul, String nilai, Color warna) {
-    return Row(
-      children: [
-        Container(
-          width: 9,
-          height: 9,
-          decoration: BoxDecoration(color: warna, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(judul, style: const TextStyle(color: _abu, fontSize: 12)),
-        ),
-        Text(
-          nilai,
-          style: const TextStyle(
-            color: _teks,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _bagianTransaksi() {
-    final daftar = _transaksi.where((t) {
-      if (_filterTransaksi == 1) return t.pemasukan;
-      if (_filterTransaksi == 2) return !t.pemasukan;
+  Widget bagianTransaksi() {
+    final daftar = transaksi.where((t) {
+      if (filterTransaksi == 1) return t.pemasukan;
+      if (filterTransaksi == 2) return !t.pemasukan;
       return true;
     }).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _judulBagian(
+        judulBagian(
           'Transaksi',
-          keterangan: 'Catatan pemasukan dan pengeluaranmu.',
+          'Daftar pemasukan dan pengeluaran.',
           aksi: IconButton(
-            tooltip: 'Tambah transaksi',
-            onPressed: _tambahTransaksiDialog,
-            icon: const Icon(Icons.add_circle_rounded, color: _biru, size: 29),
+            onPressed: tambahTransaksiDialog,
+            icon: const Icon(Icons.add_circle_rounded, color: biru, size: 29),
           ),
         ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _filterChip('Semua', 0),
-              const SizedBox(width: 8),
-              _filterChip('Pemasukan', 1),
-              const SizedBox(width: 8),
-              _filterChip('Pengeluaran', 2),
-            ],
-          ),
+        Wrap(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Semua'),
+              selected: filterTransaksi == 0,
+              onSelected: (_) => setState(() => filterTransaksi = 0),
+            ),
+            ChoiceChip(
+              label: const Text('Pemasukan'),
+              selected: filterTransaksi == 1,
+              onSelected: (_) => setState(() => filterTransaksi = 1),
+            ),
+            ChoiceChip(
+              label: const Text('Pengeluaran'),
+              selected: filterTransaksi == 2,
+              onSelected: (_) => setState(() => filterTransaksi = 2),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (daftar.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(26),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE8EDF5)),
-            ),
-            child: const Column(
-              children: [
-                Icon(
-                  Icons.receipt_long_rounded,
-                  color: Color(0xFFB4C0D2),
-                  size: 40,
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Belum ada transaksi',
-                  style: TextStyle(color: _teks, fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  'Tekan tombol tambah untuk mencatat transaksi pertamamu.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _abu, fontSize: 12),
-                ),
-              ],
-            ),
+          const _KartuKosong(
+            ikon: Icons.receipt_long_rounded,
+            judul: 'Belum ada transaksi',
+            keterangan: 'Tekan tombol tambah untuk mencatat transaksi.',
           )
         else
-          ...daftar.map((transaksi) {
-            final indeksAsli = _transaksi.indexOf(transaksi);
-            final warna = transaksi.pemasukan ? _hijau : _merah;
+          ...daftar.map((t) {
+            final indeks = transaksi.indexOf(t);
+            final warna = t.pemasukan ? hijau : merah;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 9),
-              padding: const EdgeInsets.all(13),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(17),
                 border: Border.all(color: const Color(0xFFE8EDF5)),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 45,
-                    height: 45,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: _warnaKategori(transaksi.kategori)
-                          .withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
+                      color: warnaKategori(t.kategori).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
                     ),
                     child: Icon(
-                      _ikonKategori(transaksi.kategori),
-                      color: _warnaKategori(transaksi.kategori),
-                      size: 21,
+                      ikonKategori(t.kategori),
+                      color: warnaKategori(t.kategori),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          transaksi.judul,
+                          t.judul,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: _teks,
-                            fontSize: 13,
+                            color: teks,
                             fontWeight: FontWeight.w800,
+                            fontSize: 13,
                           ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 4),
                         Text(
-                          '${transaksi.kategori} • ${_formatTanggal(transaksi.tanggal)}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _abu, fontSize: 10),
+                          '${t.kategori} • ${tanggal(t.tanggal)}',
+                          style: const TextStyle(color: abu, fontSize: 10),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '${transaksi.pemasukan ? '+' : '−'}${_formatAngka(transaksi.jumlah)}',
+                        '${t.pemasukan ? '+' : '−'}${uang(t.jumlah)}',
                         style: TextStyle(
                           color: warna,
                           fontWeight: FontWeight.w800,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
-                      const SizedBox(height: 3),
                       IconButton(
-                        tooltip: 'Hapus transaksi',
                         visualDensity: VisualDensity.compact,
-                        onPressed: () => _konfirmasiHapus(indeksAsli),
+                        tooltip: 'Hapus transaksi',
+                        onPressed: () => hapusTransaksi(indeks),
                         icon: const Icon(
                           Icons.delete_outline_rounded,
-                          color: _abu,
-                          size: 18,
+                          color: abu,
+                          size: 19,
                         ),
                       ),
                     ],
@@ -1710,218 +1384,299 @@ class _KeuanganScreenState extends State<KeuanganScreen> {
     );
   }
 
-  Widget _filterChip(String label, int nilai) {
-    final aktif = _filterTransaksi == nilai;
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        backgroundColor: latar,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: tambahTransaksiDialog,
+          backgroundColor: navy,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Transaksi'),
+        ),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final lebar = constraints.maxWidth;
+              final padding = lebar > 760 ? 24.0 : 16.0;
 
-    return ChoiceChip(
-      label: Text(label),
-      selected: aktif,
-      onSelected: (_) => setState(() => _filterTransaksi = nilai),
-      selectedColor: _navy,
-      backgroundColor: Colors.white,
-      labelStyle: TextStyle(
-        color: aktif ? Colors.white : _abu,
-        fontWeight: FontWeight.w700,
-        fontSize: 12,
+              return Center(
+                child: SizedBox(
+                  width: lebar > 760 ? 720 : lebar,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          padding,
+                          15,
+                          padding,
+                          12,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [navy, biru],
+                                ),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: const Icon(
+                                Icons.account_balance_wallet_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Keuangan',
+                                    style: TextStyle(
+                                      color: navy,
+                                      fontSize: 23,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'Atur uang, capai tujuanmu.',
+                                    style: TextStyle(
+                                      color: abu,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Atur saldo awal',
+                              onPressed: aturSaldo,
+                              icon: const Icon(
+                                Icons.account_balance_wallet_outlined,
+                                color: navy,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Material(
+                        color: Colors.white,
+                        child: TabBar(
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          labelColor: biru,
+                          unselectedLabelColor: abu,
+                          indicatorColor: biru,
+                          tabs: const [
+                            Tab(
+                              icon: Icon(Icons.dashboard_rounded),
+                              text: 'Ringkasan',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.table_chart_rounded),
+                              text: 'Anggaran',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.savings_rounded),
+                              text: 'Tabungan',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.analytics_rounded),
+                              text: 'Analisis',
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                padding,
+                                16,
+                                padding,
+                                100,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  kartuSaldo(lebar),
+                                  const SizedBox(height: 20),
+                                  judulBagian(
+                                    'Ringkasan Bulan Ini',
+                                    'Pemasukan dan pengeluaran bulan ini.',
+                                  ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: kartuRingkasan(
+                                          'Pemasukan',
+                                          pemasukanBulan,
+                                          Icons.south_west_rounded,
+                                          hijau,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: kartuRingkasan(
+                                          'Pengeluaran',
+                                          pengeluaranBulan,
+                                          Icons.north_east_rounded,
+                                          merah,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 22),
+                                  bagianTransaksi(),
+                                ],
+                              ),
+                            ),
+                            SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                padding,
+                                16,
+                                padding,
+                                100,
+                              ),
+                              child: bagianAnggaran(),
+                            ),
+                            SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                padding,
+                                16,
+                                padding,
+                                100,
+                              ),
+                              child: bagianTabungan(),
+                            ),
+                            SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                padding,
+                                16,
+                                padding,
+                                100,
+                              ),
+                              child: Column(
+                                children: [
+                                  bagianAnalisis(),
+                                  const SizedBox(height: 24),
+                                  bagianTransaksi(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
-      side: BorderSide(color: aktif ? _navy : const Color(0xFFE2E8F1)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
     );
   }
+}
 
-  Future<void> _konfirmasiHapus(int indeks) async {
-    final transaksi = _transaksi[indeks];
+class _KartuKosong extends StatelessWidget {
+  final IconData ikon;
+  final String judul;
+  final String keterangan;
 
-    final hapus = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus transaksi?'),
-        content: Text(
-          'Transaksi "${transaksi.judul}" akan dihapus. '
-          'Jika transaksi ini merupakan setoran tabungan, jumlah tabungan juga akan dikoreksi.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
+  const _KartuKosong({
+    required this.ikon,
+    required this.judul,
+    required this.keterangan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+      ),
+      child: Column(
+        children: [
+          Icon(ikon, color: const Color(0xFFB4C0D2), size: 38),
+          const SizedBox(height: 10),
+          Text(
+            judul,
+            style: const TextStyle(
+              color: Color(0xFF24334D),
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _merah),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Hapus'),
+          const SizedBox(height: 5),
+          Text(
+            keterangan,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF7D8BA3),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
     );
-
-    if (hapus == true && mounted) {
-      _hapusTransaksi(indeks);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transaksi berhasil dihapus.')),
-      );
-    }
   }
+}
+
+class _BarisAnalisis extends StatelessWidget {
+  final String judul;
+  final String nilai;
+  final Color warna;
+
+  const _BarisAnalisis({
+    required this.judul,
+    required this.nilai,
+    required this.warna,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _latar,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _tambahTransaksiDialog,
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Transaksi',
-          style: TextStyle(fontWeight: FontWeight.w700),
+    return Row(
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(
+            color: warna,
+            shape: BoxShape.circle,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final lebar = constraints.maxWidth;
-            final kontenMaksimal = lebar > 760 ? 720.0 : lebar;
-
-            return Center(
-              child: SizedBox(
-                width: kontenMaksimal,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        lebar > 760 ? 24 : 18,
-                        18,
-                        lebar > 760 ? 24 : 18,
-                        110,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          Row(
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [_navy, _biru],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _biru.withValues(alpha: 0.18),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.account_balance_wallet_rounded,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 13),
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Keuangan',
-                                      style: TextStyle(
-                                        color: _navy,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    SizedBox(height: 3),
-                                    Text(
-                                      'Atur uang, capai tujuanmu.',
-                                      style: TextStyle(
-                                        color: _abu,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color(0xFFE5EBF4),
-                                  ),
-                                ),
-                                child: IconButton(
-                                  tooltip: 'Tambah transaksi',
-                                  onPressed: _tambahTransaksiDialog,
-                                  icon: const Icon(
-                                    Icons.add_rounded,
-                                    color: _navy,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 22),
-
-                          // Kartu biru: saldo dan progres anggaran.
-                          _kartuUtama(lebar),
-
-                          const SizedBox(height: 25),
-
-                          // Ringkasan pemasukan dan pengeluaran tetap
-                          // tersedia di luar kartu biru.
-                          _judulBagian(
-                            'Ringkasan Bulan Ini',
-                            keterangan: DateFormat(
-                              'MMMM yyyy',
-                              'id_ID',
-                            ).format(DateTime.now()),
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _kartuRingkasan(
-                                  judul: 'Pemasukan',
-                                  jumlah: _pemasukanBulanIni,
-                                  ikon: Icons.south_west_rounded,
-                                  warna: _hijau,
-                                  keterangan: 'Bulan ini',
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _kartuRingkasan(
-                                  judul: 'Pengeluaran',
-                                  jumlah: _pengeluaranBulanIni,
-                                  ikon: Icons.north_east_rounded,
-                                  warna: _merah,
-                                  keterangan: 'Bulan ini',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 28),
-                          _bagianAnggaran(),
-                          const SizedBox(height: 28),
-                          _bagianTabungan(),
-                          const SizedBox(height: 28),
-                          _bagianAnalisis(),
-                          const SizedBox(height: 28),
-                          _bagianTransaksi(),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            judul,
+            style: const TextStyle(
+              color: Color(0xFF7D8BA3),
+              fontSize: 12,
+            ),
+          ),
         ),
-      ),
+        Text(
+          nilai,
+          style: const TextStyle(
+            color: Color(0xFF24334D),
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }

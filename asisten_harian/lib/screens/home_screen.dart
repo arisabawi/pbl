@@ -4,6 +4,7 @@ import 'jadwal_tugas_screen.dart';
 import 'catatan_screen.dart';
 import 'target_screen.dart';
 import 'keuangan_screen.dart';
+import 'statistik_screen.dart';
 
 const Color primaryBlue = Color(0xFF246BFD);
 const Color backgroundColor = Color(0xFFF3F6FC);
@@ -536,6 +537,16 @@ onTap: () {
       ),
     );
   }
+  else if (menu.$1 == 'Statistik') {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => StatistikScreen(
+        tasks: _tasks,
+      ),
+    ),
+  );
+}
 },
 
                 child: Column(
